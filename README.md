@@ -24,6 +24,23 @@ Answer `y` to add the marketplace, then pick a scope (user scope = every session
 
 To update later: `claude plugin update <plugin>@trkaplan`, then restart Claude Code.
 
+## Layout
+
+```
+claude-plugins/
+├── .claude-plugin/marketplace.json   # lists every plugin below
+├── README.md
+├── LICENSE
+└── plugins/
+    └── smart-rename/                 # a mod
+        ├── .claude-plugin/plugin.json
+        ├── hooks/                    # hooks.json, register.ts, lib.ts
+        ├── tests/
+        └── README.md
+```
+
+A skill plugin has `skills/<skill>/SKILL.md` in place of `hooks/`.
+
 ## Adding a plugin (for the maintainer)
 
 1. Put it in `plugins/<name>/` with its own `.claude-plugin/plugin.json` (a mod adds `hooks/`, a skill adds `skills/<skill>/SKILL.md`).
