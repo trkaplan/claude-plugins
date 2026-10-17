@@ -6,7 +6,7 @@ Claude Code mods and skills by [Tuncay Kaplan](https://github.com/trkaplan). Thi
 
 | Plugin | Kind | What it does |
 | --- | --- | --- |
-| [smart-rename](plugins/smart-rename) | mod | Bare `/rename` reads the whole session and offers 4 names to pick from |
+| [smart-rename](plugins/smart-rename) | mod | `/rename` run bare suggests 4 names from the whole session; `/rename <name>` works as before |
 
 ## Install
 
@@ -22,7 +22,7 @@ Answer `y` to add the marketplace, then pick a scope (user scope = every session
 /plugin install smart-rename --marketplace trkaplan/claude-plugins
 ```
 
-To update later: `claude plugin update <plugin>`, then `/reload-plugins` in a running session.
+To update later: `claude plugin update <plugin>@trkaplan`, then restart Claude Code.
 
 ## Adding a plugin (for the maintainer)
 

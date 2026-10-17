@@ -7,51 +7,67 @@ const run: CommandRunInput = {
   origin: { kind: 'composer' },
   presentation: { isFullscreen: false, columns: 120 },
 }
-const usage: ModelUsage = {
-  input_tokens: 0,
-  output_tokens: 0,
-  cache_creation_input_tokens: 0,
-  cache_read_input_tokens: 0,
-}
+const usage: ModelUsage = { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
 
-test('/rename (no args) answers when the session is empty', async ($, on) => {
+test('bare /rename answers when the session is empty', async ($, on) => {
   on('session.messages', async () => ({ value: [] }))
   const r = await $.command.run(run)
   expect(r.text).toBe('The session has no messages yet, nothing to name.')
 })
 
-test('/rename (no args) sends the whole session to the model and reports a failed call', async ($, on) => {
+test('bare /rename sends the whole session to haiku and reports a failed call', async ($, on) => {
   let sent = ''
+  let model = ''
   on('session.messages', async () => ({
     value: [
-    { role: 'user' as const, text: 'ilk konu: session buddy', toolUses: [] },
-    { role: 'assistant' as const, text: 'tamam', toolUses: [] },
-    { role: 'user' as const, text: 'son konu: chrome gecmisi', toolUses: [] },
+      { role: 'user' as const, text: 'first topic: session buddy', toolUses: [] },
+      { role: 'assistant' as const, text: 'ok', toolUses: [] },
+      { role: 'user' as const, text: 'last topic: chrome history', toolUses: [] },
     ],
   }))
   on('model.complete', async (_$, e) => {
     sent = e.prompt
+    model = e.model
     return { value: { isAnswered: false as const, reason: 'empty-reply' as const, usage } }
   })
   const r = await $.command.run(run)
-  expect(sent.includes('ilk konu: session buddy')).toBe(true)
-  expect(sent.includes('son konu: chrome gecmisi')).toBe(true)
+  expect(model).toBe('haiku')
+  expect(sent.includes('first topic: session buddy')).toBe(true)
+  expect(sent.includes('last topic: chrome history')).toBe(true)
   expect(r.text).toBe('Could not get name suggestions (empty-reply).')
 })
 
-test('/rename with a name passes straight to the original', async ($, on) => {
+test('a prose reply is retried once, then reported', async ($, on) => {
+  let calls = 0
+  on('session.messages', async () => ({ value: [{ role: 'user' as const, text: 'hello', toolUses: [] }] }))
+  on('model.complete', async () => {
+    calls++
+    return { value: { isAnswered: true as const, text: 'Sure! Here are some ideas for you.', usage } }
+  })
+  const r = await $.command.run(run)
+  expect(calls).toBe(2)
+  expect(r.text).toBe('The model did not return usable names.')
+})
+
+test('/rename with a name passes straight to the built-in', async ($, on) => {
   let got = ''
   on('command.run', async (_$, e) => {
     got = e.args
     return { text: 'renamed' }
   })
-  const r = await $.command.run({ ...run, args: 'benim-ismim' })
-  expect(got).toBe('benim-ismim')
+  const r = await $.command.run({ ...run, args: 'my-name' })
+  expect(got).toBe('my-name')
   expect(r.text).toBe('renamed')
 })
 
-test('language tr answers in Turkish', { options: { language: 'tr' } }, async ($, on) => {
-  on('session.messages', async () => ({ value: [] }))
+test('language tr and model sonnet', { options: { language: 'tr', model: 'sonnet' } }, async ($, on) => {
+  let model = ''
+  on('session.messages', async () => ({ value: [{ role: 'user' as const, text: 'merhaba', toolUses: [] }] }))
+  on('model.complete', async (_$, e) => {
+    model = e.model
+    return { value: { isAnswered: false as const, reason: 'empty-reply' as const, usage } }
+  })
   const r = await $.command.run(run)
-  expect(r.text).toBe('Oturumda henuz mesaj yok, isim onerilemiyor.')
+  expect(model).toBe('sonnet')
+  expect(r.text).toBe('İsim önerisi alınamadı (empty-reply).')
 })

@@ -2,39 +2,111 @@ import type { SessionMessage } from 'claude-code'
 
 export type Lang = 'en' | 'tr'
 
-// Total character budget of the digest sent to the model.
-const BUDGET = 60_000
-const USER_CAP = 1_500
-const ASSISTANT_CAP = 300
+// How the session is condensed for the model (sized for Haiku's 200k window).
+export const LIMITS = {
+  // Last N prompts are sent with their replies.
+  recentTurns: 8,
+  // An earlier prompt: its head and tail survive, a pasted file in between is cut.
+  earlierHead: 450,
+  earlierTail: 150,
+  // A recent prompt and the replies to it.
+  recentPromptHead: 2_400,
+  recentPromptTail: 600,
+  replyHead: 1_200,
+  replyTail: 800,
+  // Above this estimate the person is asked before the call is made.
+  warnTokens: 30_000,
+  // Hard ceiling of the whole digest.
+  maxChars: 400_000,
+}
 
-const clip = (text: string, cap: number) =>
-  text.length <= cap ? text : `${text.slice(0, cap)} [...]`
+// A compaction summary stands in for the history before it: it is sent whole.
+const SUMMARY = /^\s*(this session is being continued from a previous conversation|<summary>)/i
 
-// Condenses the whole session: user messages generously, assistant messages
-// briefly, tool calls by name only. Over budget, every message is shortened
-// proportionally, so topics from the start to the end all reach the model.
-export function digest(messages: readonly SessionMessage[]): string {
-  const build = (scale: number) =>
-    messages
-      .map(m => {
-        const tools = m.toolUses.map(t => t.tool).join(', ')
-        const cap = Math.max(40, Math.floor((m.role === 'user' ? USER_CAP : ASSISTANT_CAP) * scale))
-        const text = clip(m.text.trim(), cap)
-        if (!text && !tools) return ''
-        const who = m.role === 'user' ? 'USER' : 'ASSISTANT'
-        return `${who}: ${text}${tools ? ` (tools: ${tools})` : ''}`
+// Engine wrappers that are not the person's own words.
+const NOISE = /<(system-reminder|local-command-stdout|local-command-caveat|task-notification)>[\s\S]*?<\/\1>/g
+
+export function clean(text: string): string {
+  return text
+    .replace(NOISE, ' ')
+    .replace(/<command-name>([\s\S]*?)<\/command-name>[\s\S]*?<command-args>([\s\S]*?)<\/command-args>/g, '$1 $2')
+    .replace(/<command-(message|name|args)>[\s\S]*?<\/command-\1>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export function headTail(text: string, head: number, tail: number): string {
+  if (text.length <= head + tail + 20) return text
+  const cut = text.length - head - tail
+  return `${text.slice(0, head)} [... ${cut} characters cut ...] ${text.slice(-tail)}`
+}
+
+type Turn = { prompt: string; replies: string[]; tools: string[] }
+
+// Groups the transcript into turns: a prompt the person typed, and what came back until the next one.
+export function turns(messages: readonly SessionMessage[]): { summaries: string[]; turns: Turn[] } {
+  const summaries: string[] = []
+  const out: Turn[] = []
+  for (const m of messages) {
+    if (m.role === 'user') {
+      if (SUMMARY.test(m.text)) {
+        summaries.push(m.text.trim())
+        continue
+      }
+      const text = clean(m.text)
+      if (text) out.push({ prompt: text, replies: [], tools: [] })
+      continue
+    }
+    const last = out.at(-1)
+    if (!last) continue
+    const text = clean(m.text)
+    if (text) last.replies.push(text)
+    for (const use of m.toolUses) if (!last.tools.includes(use.tool)) last.tools.push(use.tool)
+  }
+  return { summaries, turns: out }
+}
+
+// The digest: every compaction summary whole, every earlier prompt in short,
+// the last few prompts with their replies.
+export function digest(messages: readonly SessionMessage[], limits = LIMITS): string {
+  const { summaries, turns: all } = turns(messages)
+  const recentFrom = Math.max(0, all.length - limits.recentTurns)
+
+  const build = (scale: number) => {
+    const parts: string[] = []
+    if (summaries.length) parts.push(`<compaction-summary>\n${summaries.join('\n\n')}\n</compaction-summary>`)
+    const earlier = all.slice(0, recentFrom)
+    if (earlier.length) {
+      const head = Math.max(60, Math.floor(limits.earlierHead * scale))
+      const tail = Math.floor(limits.earlierTail * scale)
+      parts.push(
+        `<earlier-prompts>\n${earlier.map((t, i) => `${i + 1}. ${headTail(t.prompt, head, tail)}`).join('\n')}\n</earlier-prompts>`,
+      )
+    }
+    const recent = all.slice(recentFrom)
+    if (recent.length) {
+      const lines = recent.map(t => {
+        const prompt = headTail(t.prompt, limits.recentPromptHead, limits.recentPromptTail)
+        const reply = headTail(t.replies.join(' '), limits.replyHead, limits.replyTail)
+        const tools = t.tools.length ? `\nTOOLS: ${t.tools.join(', ')}` : ''
+        return `USER: ${prompt}${reply ? `\nASSISTANT: ${reply}` : ''}${tools}`
       })
-      .filter(Boolean)
-      .join('\n')
+      parts.push(`<recent-turns>\n${lines.join('\n\n')}\n</recent-turns>`)
+    }
+    return parts.join('\n\n')
+  }
 
   let scale = 1
   let out = build(scale)
-  while (out.length > BUDGET && scale > 0.05) {
+  while (out.length > limits.maxChars && scale > 0.1) {
     scale *= 0.7
     out = build(scale)
   }
-  return out.length > BUDGET ? out.slice(0, BUDGET) : out
+  return out.length > limits.maxChars ? out.slice(-limits.maxChars) : out
 }
+
+// A rough token estimate: about 3.5 characters per token across English and Turkish text.
+export const estimateTokens = (chars: number) => Math.ceil(chars / 3.5)
 
 const LANGUAGE_RULE: Record<Lang, string> = {
   en: '- English, lowercase, words joined by hyphens (kebab-case), ASCII only.',
@@ -42,59 +114,95 @@ const LANGUAGE_RULE: Record<Lang, string> = {
 }
 
 export function system(lang: Lang): string {
-  return `You suggest names for a Claude Code session.
+  return `You suggest names for a Claude Code session, so its owner can find it again later.
+The input holds the whole session: a compaction summary if the session was compacted, every earlier prompt of the user in short, and the last turns in full.
 Rules:
-- Consider the WHOLE session, not only the last messages. If it spans several topics, also suggest names that cover the main ones.
+- Name what the WHOLE session was about, not only its last turns. If it spans several topics, cover the main ones.
 ${LANGUAGE_RULE[lang]}
-- Each name 2-7 words, at most 60 characters. Be concrete: use tool, project and topic names.
+- Each name 2-7 words, at most 60 characters, searchable and specific.
+- Keep technical terms, tool, product, project and file names (e.g. "fix-webpack-build-error", not "fix-a-build-problem").
+- No generic names ("new-session", "untitled", "chat", "misc", "general-questions").
+- Never put personal data or secrets in a name (emails, tokens, passwords, keys).
+- If a current name is given, every suggestion must differ from it.
 - Give 4 distinct suggestions: one covering the whole session, the others with different emphasis.
-- Return only a JSON array and nothing else. Example: ["topic-one","topic-two","topic-three","topic-four"]`
+- Reply with exactly one JSON object and nothing else: {"names": ["name-one", "name-two", "name-three", "name-four"]}`
 }
 
-export const TEXT: Record<Lang, Record<'empty' | 'status' | 'failed' | 'unparsed' | 'question' | 'header' | 'cancelled' | 'blank' | 'description', string>> = {
+export function prompt(session: string, current?: string): string {
+  const name = current ? `<current-name>${current}</current-name>\n\n` : ''
+  return `${name}<session>\n${session}\n</session>\n\nReply with the JSON object only.`
+}
+
+export const RETRY = 'Your previous reply could not be parsed. Reply with ONLY {"names": [...]} holding 4 kebab-case names.'
+
+type Key =
+  | 'empty' | 'status' | 'failed' | 'unparsed' | 'question' | 'header' | 'cancelled' | 'blank'
+  | 'description' | 'hint' | 'warn' | 'go' | 'stop'
+
+export const TEXT: Record<Lang, Record<Key, string>> = {
   en: {
     empty: 'The session has no messages yet, nothing to name.',
     status: 'rename: preparing suggestions...',
     failed: 'Could not get name suggestions',
-    unparsed: 'Could not read the model reply',
-    question: 'Which name for this session? (type your own under Other)',
+    unparsed: 'The model did not return usable names',
+    question: 'Which name for this session?',
     header: 'Name',
     cancelled: 'Rename cancelled.',
     blank: 'Empty name, nothing changed.',
-    description: 'Without a name: reads the whole session and offers 4 names; with a name: renames directly',
+    description: 'Run it bare: suggests 4 names from the whole session. Or give a name to rename directly',
+    hint: '[name] optional',
+    warn: 'Suggesting names will send about {tokens} tokens to {model}. Continue?',
+    go: 'Continue',
+    stop: 'Cancel',
   },
   tr: {
-    empty: 'Oturumda henuz mesaj yok, isim onerilemiyor.',
-    status: 'rename: oneriler hazirlaniyor...',
-    failed: 'Isim onerisi alinamadi',
-    unparsed: 'Modelin cevabi anlasilamadi',
-    question: 'Bu oturum icin hangi isim? (Other ile kendin yazabilirsin)',
-    header: 'Isim',
-    cancelled: 'Isim secimi iptal edildi.',
-    blank: 'Bos isim, degisiklik yapilmadi.',
-    description: 'Isim vermezsen oturumun tamamina bakip 4 isim onerir; isimle yazarsan dogrudan o isimle adlandirir',
+    empty: 'Oturumda henüz mesaj yok, isim önerilemiyor.',
+    status: 'rename: öneriler hazırlanıyor...',
+    failed: 'İsim önerisi alınamadı',
+    unparsed: 'Model kullanılabilir isim döndürmedi',
+    question: 'Bu oturum için hangi isim?',
+    header: 'İsim',
+    cancelled: 'İsim seçimi iptal edildi.',
+    blank: 'Boş isim, değişiklik yapılmadı.',
+    description: 'Boş çalıştır: oturumun tamamına bakıp 4 isim önerir. İsim verirsen doğrudan o isimle adlandırır',
+    hint: '[isim] opsiyonel',
+    warn: 'İsim önerisi için yaklaşık {tokens} token {model} modeline gönderilecek. Devam edilsin mi?',
+    go: 'Devam',
+    stop: 'İptal',
   },
 }
 
 export const langOf = (value: unknown): Lang => (value === 'tr' ? 'tr' : 'en')
+export const modelOf = (value: unknown): 'haiku' | 'sonnet' => (value === 'sonnet' ? 'sonnet' : 'haiku')
 
-// Pulls the name list out of the model reply; falls back to lines when the JSON is broken.
-export function parseNames(reply: string, max = 4): string[] {
-  const match = reply.match(/\[[\s\S]*\]/)
-  let raw: unknown[] = []
-  if (match) {
+const NAME = /^[a-z0-9]+(?:-[a-z0-9]+){1,9}$/
+const GENERIC = new Set(['new-session', 'new-thread', 'untitled', 'untitled-session', 'no-title', 'general-chat', 'misc', 'chat-session'])
+
+// The names in a model reply: the JSON object (or a bare array), else only lines that
+// already look like kebab-case names, so a prose sentence never becomes an option.
+export function parseNames(reply: string, options: { current?: string; max?: number } = {}): string[] {
+  const max = options.max ?? 4
+  let raw: string[] = []
+  const json = reply.match(/\{[^{}]*\}/)?.[0] ?? reply.match(/\[[^[\]]*\]/)?.[0]
+  if (json) {
     try {
-      const parsed: unknown = JSON.parse(match[0])
-      if (Array.isArray(parsed)) raw = parsed
+      const parsed: unknown = JSON.parse(json)
+      const list: unknown = Array.isArray(parsed) ? parsed : (parsed as { names?: unknown }).names
+      if (Array.isArray(list)) raw = list.filter((x): x is string => typeof x === 'string')
     } catch {
       raw = []
     }
   }
-  if (raw.length === 0) raw = reply.split('\n')
+  if (raw.length === 0) {
+    raw = reply
+      .split('\n')
+      .map(line => line.trim().replace(/^(?:[-*]\s+|\d+[.)]\s+)/, '').replace(/^["'`]+|["'`,]+$/g, ''))
+      .filter(line => /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+$/.test(line))
+  }
+  const current = options.current ? normalize(options.current) : undefined
   const names = raw
-    .filter((x): x is string => typeof x === 'string')
     .map(normalize)
-    .filter(n => n.length >= 3)
+    .filter(n => NAME.test(n) && !GENERIC.has(n) && n !== current)
   return [...new Set(names)].slice(0, max)
 }
 
@@ -106,7 +214,6 @@ export function normalize(name: string): string {
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/^[\s\-*\d.)"'`]+/, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
