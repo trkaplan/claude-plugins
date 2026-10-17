@@ -6,14 +6,8 @@ export const register: Register = (on, options) => {
   const lang = langOf(options.language)
   const model = modelOf(options.model)
   const t = TEXT[lang]
-  // The session's current name, so suggestions differ from it: the title a resumed
-  // session starts with, then every name /rename is given.
+  // The session's current name, so suggestions differ from it: every name /rename is given.
   let current: string | undefined
-
-  on('classic.SessionStart', async ($, e, next) => {
-    if (e.session_title) current = e.session_title
-    return next(e)
-  }).catch(($, e, next) => next(e))
 
   // The typeahead says the name is optional and what a bare run does.
   on('command.describe', { command: 'rename' }, async ($, e, next) => {
@@ -30,7 +24,8 @@ export const register: Register = (on, options) => {
     timeoutMs: 90_000,
   })
 
-  // /rename <name>: the built-in, untouched. Bare /rename: suggest, pick, then the built-in with the pick.
+  // /rename <name>: the built-in, untouched. Bare /rename: suggest and pick, then run the
+  // built-in /rename <pick> as a command of its own; the event is never rewritten.
   on('command.run', { command: 'rename' }, async ($, e, next) => {
     const given = e.args.trim()
     if (given) {
@@ -75,6 +70,10 @@ export const register: Register = (on, options) => {
     if (!choice) return { text: t.blank }
 
     current = choice
-    return next({ ...e, args: choice })
+    // After this run ends, so the built-in runs once the session is idle, as if typed.
+    $.clock.after(0, () => {
+      $.command.run({ command: 'rename', args: choice }).catch((err: unknown) => $.ui.log(`better-rename: ${String(err)}`))
+    })
+    return {}
   }).catch(($, e, next) => next(e)) // on any failure of ours, the built-in /rename runs
 }

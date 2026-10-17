@@ -1,6 +1,7 @@
 {
   "name": "better-rename",
-  "version": "0.4.0",
+  "displayName": "Better Rename",
+  "version": "0.5.0",
   "description": "/rename run bare suggests 4 names from the whole session; /rename <name> works as before",
   "author": {
     "name": "Tuncay Kaplan",
@@ -35,5 +36,6 @@
         "sonnet"
       ]
     }
-  }
+  },
+  "icon": "./.claude-plugin/icon.png"
 }

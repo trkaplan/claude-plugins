@@ -2,7 +2,7 @@
 
 A Claude Code mod that makes `/rename` suggest names from the whole session.
 
-- **`/rename`** run bare (the name is optional) reads the **whole** session, asks a model for 4 names, and shows them in a picker. Move with the arrow keys and press Enter to rename. Type your own under **Other**; a typed name is used exactly as you wrote it.
+- **`/rename`** run bare (the name is optional) reads the **whole** session, asks a model for 4 names, and shows them in a picker. Move with the arrow keys and press Enter: the mod then runs the built-in `/rename <your pick>` as a command of its own, visible in the transcript. Type your own under **Other**; a typed name is used exactly as you wrote it.
 - **`/rename my-name`** works exactly like the built-in.
 - If anything in the mod fails, the built-in `/rename` runs instead.
 
@@ -36,6 +36,17 @@ The session is condensed before it is sent, so a long session stays cheap while 
 Engine wrappers (system reminders, command output) are left out. Above about 30,000 estimated tokens the mod asks before it sends anything.
 
 The reply must be a JSON object of 4 kebab-case names. Every name is checked (lowercase letters, digits, hyphens; generic names like `new-session` and the session's current name are dropped). If fewer than 2 survive, the model is asked once more; prose is never offered as a name.
+
+## Hooks this mod adds
+
+The mod is one TypeScript hooks module (`hooks/register.ts`). It hooks two events and changes nothing else:
+
+| Hook | What it does | What it changes |
+| --- | --- | --- |
+| `command.describe` for `rename` | Rewrites the description and argument hint `/rename` shows in the typeahead, so the menu says the name is optional | The menu text of `/rename` only |
+| `command.run` for `rename` | With a name: passes the command on unchanged. Bare: builds the digest below, calls the model, shows the picker, and when you pick a name, runs the built-in `/rename <name>` as a separate command | Nothing in the original command; the built-in does the renaming |
+
+If the mod fails at any point, the original `/rename` runs unchanged. The mod reads no settings, files or environment variables, writes nothing to disk, makes no network calls of its own, and touches no permissions. Its only outside call is the model call described below.
 
 ## Cost and privacy
 

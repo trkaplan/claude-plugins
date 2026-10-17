@@ -33,7 +33,8 @@ claude-plugins/
 ├── LICENSE
 └── plugins/
     └── better-rename/                 # a mod
-        ├── .claude-plugin/plugin.json
+        ├── .claude-plugin/            # plugin.json, icon.png
+        ├── LICENSE
         ├── hooks/                    # hooks.json, register.ts, lib.ts
         ├── tests/
         └── README.md
