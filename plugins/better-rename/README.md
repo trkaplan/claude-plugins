@@ -77,7 +77,7 @@ Only the **current** session, and only when you run a bare `/rename`. It never r
 
 - **Bugs and questions:** open an issue at https://github.com/trkaplan/claude-plugins/issues
 - **Security reports:** use GitHub's private vulnerability reporting at https://github.com/trkaplan/claude-plugins/security/advisories/new, so the report is not public. Reports are investigated and answered as soon as possible.
-- **Troubleshooting:** if bare `/rename` behaves like the built-in, the mod failed and fell back; the transcript (or `claude --debug`) shows a line starting with `better-rename:` with the reason. Check that your Claude Code build supports mods.
+- **Troubleshooting:** if bare `/rename` behaves like the built-in, the mod failed and fell back; run Claude Code with `claude --debug` and the debug log shows a line starting with `better-rename:` with the reason. Check that your Claude Code build supports mods.
 
 ## Development
 
