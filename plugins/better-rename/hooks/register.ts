@@ -43,7 +43,7 @@ export const register: Register = (on, options) => {
       const go = await $.ui
         .ask(t.warn.replace('{tokens}', tokens.toLocaleString('en-US')).replace('{model}', model), { options: [t.go, t.stop] })
         .catch(() => t.stop)
-      if (go !== t.go) return { text: t.cancelled }
+      if (go !== t.go) return { text: t.warnCancelled }
     }
 
     let names: string[]
@@ -64,8 +64,8 @@ export const register: Register = (on, options) => {
     let choice: string
     try {
       choice = (await $.ui.ask(t.question, { header: t.header, options: names })).trim()
-    } catch {
-      return { text: t.cancelled }
+    } catch (err: unknown) {
+      return { text: `${t.cancelled} (${err instanceof Error ? err.message : String(err)})` }
     }
     if (!choice) return { text: t.blank }
 

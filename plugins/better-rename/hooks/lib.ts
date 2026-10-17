@@ -137,7 +137,7 @@ export const RETRY = 'Your previous reply could not be parsed. Reply with ONLY {
 
 type Key =
   | 'empty' | 'status' | 'failed' | 'unparsed' | 'question' | 'header' | 'cancelled' | 'blank'
-  | 'description' | 'hint' | 'warn' | 'go' | 'stop'
+  | 'description' | 'hint' | 'warn' | 'go' | 'stop' | 'warnCancelled'
 
 export const TEXT: Record<Lang, Record<Key, string>> = {
   en: {
@@ -154,6 +154,7 @@ export const TEXT: Record<Lang, Record<Key, string>> = {
     warn: 'Suggesting names will send about {tokens} tokens to {model}. Continue?',
     go: 'Continue',
     stop: 'Cancel',
+    warnCancelled: 'Cancelled at the token warning, nothing was sent.',
   },
   tr: {
     empty: 'Oturumda henüz mesaj yok, isim önerilemiyor.',
@@ -169,6 +170,7 @@ export const TEXT: Record<Lang, Record<Key, string>> = {
     warn: 'İsim önerisi için yaklaşık {tokens} token {model} modeline gönderilecek. Devam edilsin mi?',
     go: 'Devam',
     stop: 'İptal',
+    warnCancelled: 'Token uyarısında iptal edildi, hiçbir şey gönderilmedi.',
   },
 }
 

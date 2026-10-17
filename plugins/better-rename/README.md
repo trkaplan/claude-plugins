@@ -46,6 +46,14 @@ The mod is one TypeScript hooks module (`hooks/register.ts`). It hooks two event
 | `command.describe` for `rename` | Rewrites the description and argument hint `/rename` shows in the typeahead, so the menu says the name is optional | The menu text of `/rename` only |
 | `command.run` for `rename` | With a name: passes the command on unchanged. Bare: builds the digest below, calls the model, shows the picker, and when you pick a name, runs the built-in `/rename <name>` as a separate command | Nothing in the original command; the built-in does the renaming |
 
+### Commands it runs
+
+The mod runs exactly one slash command, and only at one moment:
+
+- **`/rename <name>`** (the built-in), once, right after you pick a name in the picker or type one under Other. It runs as if you had typed it, shows in the transcript, and goes through every hook and setting a typed command does. If you close the picker or cancel at the token warning, nothing runs.
+
+It never runs any other command, and never runs one on its own initiative.
+
 If the mod fails at any point, the original `/rename` runs unchanged. The mod reads no settings, files or environment variables, writes nothing to disk, makes no network calls of its own, and touches no permissions. Its only outside call is the model call described below.
 
 ## Cost and privacy
