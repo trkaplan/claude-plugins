@@ -1,7 +1,7 @@
 {
   "name": "better-rename",
   "displayName": "Better Rename",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "/rename run bare suggests 4 names from the whole session; /rename <name> works as before",
   "author": {
     "name": "Tuncay Kaplan",

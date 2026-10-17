@@ -16,6 +16,12 @@ Type `/ren` and Tab: there is only one `/rename`, and the menu says the name is 
 
 Answer `y` to add the marketplace and pick a scope (user scope = every session). Requires a Claude Code build with mods (function hooks); built and tested on 2.1.296.
 
+## Examples
+
+1. **Name a long session.** After an hour of work, run `/rename` with no name. The picker shows four names drawn from the whole session, for example `Fix login redirect bug`, `Auth middleware cleanup and tests`, `Login redirect loop after OAuth callback` and `Session cookie and redirect fixes`. Pick one with the arrow keys and Enter; the session is renamed and `/resume` lists it under that name.
+2. **Name it yourself.** Run `/rename release-notes-draft`. The mod steps aside and the built-in renames the session at once; no model call is made.
+3. **Switch the format or language.** Open `/config`, find better-rename, and set **Rename format** to `kebab-case` (or `language` to `tr`). The next bare `/rename` suggests `fix-login-redirect-bug` style names, or Turkish ones such as `Giriş yönlendirme hatası`.
+
 ## Options
 
 | Option | Values | Default | What it sets |
@@ -62,6 +68,16 @@ If the mod fails at any point, the original `/rename` runs unchanged. The mod re
 Every bare `/rename` makes one model call (two if the first reply is unusable) with the condensed session described above: your prompts, the assistant's replies and tool names. That includes anything you pasted into a prompt (trimmed as described above) and any compaction summary in full; tool results are not sent. The call goes to the same provider and account your session already uses, and is billed like any other request. With the default `haiku` model a typical call is a few thousand tokens. `/rename <name>` sends nothing.
 
 The picker needs an interactive session: in a `claude -p` run a bare `/rename` reports that the pick was cancelled and changes nothing.
+
+### What it reads
+
+Only the **current** session, and only when you run a bare `/rename`. It never reads other sessions, Claude's memory, project or uploaded files, or anything on disk. What it reads is used for that one model call and then dropped: nothing is logged, stored or kept between runs. The only state it holds is the session's current name, in memory, so new suggestions differ from it.
+
+## Support and security
+
+- **Bugs and questions:** open an issue at https://github.com/trkaplan/claude-plugins/issues
+- **Security reports:** use GitHub's private vulnerability reporting at https://github.com/trkaplan/claude-plugins/security/advisories/new, so the report is not public. Reports are investigated and answered as soon as possible.
+- **Troubleshooting:** if bare `/rename` behaves like the built-in, the mod failed and fell back; the transcript (or `claude --debug`) shows a line starting with `better-rename:` with the reason. Check that your Claude Code build supports mods.
 
 ## Development
 
