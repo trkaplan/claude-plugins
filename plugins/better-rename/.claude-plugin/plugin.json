@@ -1,7 +1,7 @@
 {
   "name": "better-rename",
   "displayName": "Better Rename",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "/rename run bare suggests 4 names from the whole session; /rename <name> works as before",
   "author": {
     "name": "Tuncay Kaplan",
@@ -34,6 +34,16 @@
       "options": [
         "haiku",
         "sonnet"
+      ]
+    },
+    "format": {
+      "type": "string",
+      "title": "Rename format",
+      "description": "How /rename suggestions are written (Title: Fix login redirect bug, kebab-case: fix-login-redirect-bug)",
+      "default": "Title",
+      "options": [
+        "Title",
+        "kebab-case"
       ]
     }
   }

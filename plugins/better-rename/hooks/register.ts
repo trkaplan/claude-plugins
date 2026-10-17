@@ -1,10 +1,11 @@
 import type { ModelCompleteRequest, Register } from 'claude-code'
 
-import { LIMITS, RETRY, TEXT, digest, estimateTokens, langOf, modelOf, parseNames, prompt, system } from './lib'
+import { LIMITS, TEXT, digest, estimateTokens, langOf, modelOf, parseNames, prompt, retry, styleOf, system } from './lib'
 
 export const register: Register = (on, options) => {
   const lang = langOf(options.language)
   const model = modelOf(options.model)
+  const style = styleOf(options.format)
   const t = TEXT[lang]
   // The session's current name, so suggestions differ from it: every name /rename is given.
   let current: string | undefined
@@ -17,7 +18,7 @@ export const register: Register = (on, options) => {
 
   const call = (text: string): ModelCompleteRequest => ({
     model,
-    system: system(lang),
+    system: system(lang, style),
     prompt: text,
     maxTokens: 400,
     effort: 'low',
@@ -51,10 +52,10 @@ export const register: Register = (on, options) => {
     try {
       const reply = await $.model.complete(call(request))
       if (!reply.isAnswered) return { text: `${t.failed} (${reply.reason}).` }
-      names = parseNames(reply.text, { current })
+      names = parseNames(reply.text, { current, style })
       if (names.length < 2) {
-        const again = await $.model.complete(call(`${request}\n\n${RETRY}`))
-        if (again.isAnswered) names = parseNames(again.text, { current })
+        const again = await $.model.complete(call(`${request}\n\n${retry(style)}`))
+        if (again.isAnswered) names = parseNames(again.text, { current, style })
       }
     } finally {
       $.ui.status(undefined)

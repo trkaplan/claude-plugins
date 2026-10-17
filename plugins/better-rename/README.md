@@ -22,6 +22,7 @@ Answer `y` to add the marketplace and pick a scope (user scope = every session).
 | --- | --- | --- | --- |
 | `language` | `en`, `tr` | `en` | Language of the suggested names and the mod's messages |
 | `model` | `haiku`, `sonnet` | `haiku` | Model that suggests the names |
+| `format` (Rename format) | `Title`, `kebab-case` | `Title` | How suggestions are written: `Title` gives a short sentence-case title (`Fix webpack build error`, Turkish letters kept), `kebab-case` gives `fix-webpack-build-error` (ASCII only, no quoting needed for `claude --resume`) |
 
 Change them in `/config` or during install.
 
@@ -35,7 +36,7 @@ The session is condensed before it is sent, so a long session stays cheap while 
 
 Engine wrappers (system reminders, command output) are left out. Above about 30,000 estimated tokens the mod asks before it sends anything.
 
-The reply must be a JSON object of 4 kebab-case names. Every name is checked (lowercase letters, digits, hyphens; generic names like `new-session` and the session's current name are dropped). If fewer than 2 survive, the model is asked once more; prose is never offered as a name.
+The reply must be a JSON object of 4 names in the chosen format. Every name is checked: 2 to 10 words, at most 60 characters, one line; generic names like `New session` and the session's current name are dropped, compared without case or punctuation. If fewer than 2 survive, the model is asked once more; prose is never offered as a name.
 
 ## Hooks this mod adds
 
@@ -54,11 +55,13 @@ The mod runs exactly one slash command, and only at one moment:
 
 It never runs any other command, and never runs one on its own initiative.
 
-If the mod fails at any point, the original `/rename` runs unchanged. The mod reads no settings, files or environment variables, writes nothing to disk, makes no network calls of its own, and touches no permissions. Its only outside call is the model call described below.
+If the mod fails at any point, the original `/rename` runs unchanged. The mod reads nothing but its own three options above (no other settings, files or environment variables), writes nothing to disk, makes no network calls of its own, and touches no permissions. Its only outside call is the model call described below.
 
 ## Cost and privacy
 
-Every bare `/rename` makes one model call (two if the first reply is unusable) with the condensed session described above: your prompts, the assistant's replies and tool names. The call goes to the same provider and account your session already uses, and is billed like any other request. With the default `haiku` model a typical call is a few thousand tokens. `/rename <name>` sends nothing.
+Every bare `/rename` makes one model call (two if the first reply is unusable) with the condensed session described above: your prompts, the assistant's replies and tool names. That includes anything you pasted into a prompt (trimmed as described above) and any compaction summary in full; tool results are not sent. The call goes to the same provider and account your session already uses, and is billed like any other request. With the default `haiku` model a typical call is a few thousand tokens. `/rename <name>` sends nothing.
+
+The picker needs an interactive session: in a `claude -p` run a bare `/rename` reports that the pick was cancelled and changes nothing.
 
 ## Development
 

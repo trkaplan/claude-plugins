@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 import type { CommandRunInput, ModelUsage } from 'claude-code'
 
 const run: CommandRunInput = {
@@ -20,9 +20,9 @@ test('bare /rename sends the whole session to haiku and reports a failed call', 
   let model = ''
   on('session.messages', async () => ({
     value: [
-      { role: 'user' as const, text: 'first topic: session buddy', toolUses: [] },
+      { role: 'user' as const, text: 'first topic: login redirect', toolUses: [] },
       { role: 'assistant' as const, text: 'ok', toolUses: [] },
-      { role: 'user' as const, text: 'last topic: chrome history', toolUses: [] },
+      { role: 'user' as const, text: 'last topic: dark mode toggle', toolUses: [] },
     ],
   }))
   on('model.complete', async (_$, e) => {
@@ -32,8 +32,8 @@ test('bare /rename sends the whole session to haiku and reports a failed call', 
   })
   const r = await $.command.run(run)
   expect(model).toBe('haiku')
-  expect(sent.includes('first topic: session buddy')).toBe(true)
-  expect(sent.includes('last topic: chrome history')).toBe(true)
+  expect(sent.includes('first topic: login redirect')).toBe(true)
+  expect(sent.includes('last topic: dark mode toggle')).toBe(true)
   expect(r.text).toBe('Could not get name suggestions (empty-reply).')
 })
 
@@ -70,4 +70,38 @@ test('language tr and model sonnet', { options: { language: 'tr', model: 'sonnet
   const r = await $.command.run(run)
   expect(model).toBe('sonnet')
   expect(r.text).toBe('İsim önerisi alınamadı (empty-reply).')
+})
+
+test('a picked title runs the built-in /rename with it', async ($, on) => {
+  const runs: string[] = []
+  on('session.messages', async () => ({ value: [{ role: 'user' as const, text: 'login redirect', toolUses: [] }] }))
+  on('model.complete', async () => ({
+    value: { isAnswered: true as const, text: '{"names":["Fix login redirect bug","Add dark mode toggle"]}', usage },
+  }))
+  const clock = mock.clock(on)
+  on('tool.call', { tool: 'AskUserQuestion' }, async (_$, e) => {
+    const q = (e as unknown as { questions: { question: string; options: { label: string }[] }[] }).questions[0]
+    return { result: { questions: [q], answers: { [q.question]: q.options[0].label } } } as never
+  })
+  on('command.run', async (_$, e, next) => {
+    if (e.args) {
+      runs.push(e.args)
+      return { text: 'renamed' }
+    }
+    return next(e)
+  })
+  await $.command.run(run)
+  await clock.advance(1)
+  expect(runs).toEqual(['Fix login redirect bug'])
+})
+
+test('format kebab-case asks for kebab names', { options: { format: 'kebab-case' } }, async ($, on) => {
+  let system = ''
+  on('session.messages', async () => ({ value: [{ role: 'user' as const, text: 'hello', toolUses: [] }] }))
+  on('model.complete', async (_$, e) => {
+    system = e.system ?? ''
+    return { value: { isAnswered: false as const, reason: 'empty-reply' as const, usage } }
+  })
+  await $.command.run(run)
+  expect(system.includes('kebab-case')).toBe(true)
 })

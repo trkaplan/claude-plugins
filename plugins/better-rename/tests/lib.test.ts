@@ -1,35 +1,62 @@
 import { describe, expect, test } from 'claude-code/testing'
 import type { SessionMessage } from 'claude-code'
 
-import { LIMITS, clean, digest, normalize, parseNames } from '../hooks/lib'
+import { LIMITS, clean, digest, normalize, parseNames, system, title } from '../hooks/lib'
 
 const msg = (role: 'user' | 'assistant', text: string): SessionMessage => ({ role, text, toolUses: [] })
 
-describe('parseNames', () => {
+describe('parseNames (kebab)', () => {
+  const kebab = { style: 'kebab' as const }
   test('reads the JSON object and normalizes', () => {
-    const names = parseNames('{"names": ["Session Buddy Eylül kaydı", "chrome-gecmis-arsivi", "chrome-gecmis-arsivi", "x"]}')
-    expect(names).toEqual(['session-buddy-eylul-kaydi', 'chrome-gecmis-arsivi'])
+    const names = parseNames('{"names": ["Giriş yönlendirme hatası", "karanlik-tema-ayari", "karanlik-tema-ayari", "x"]}', kebab)
+    expect(names).toEqual(['giris-yonlendirme-hatasi', 'karanlik-tema-ayari'])
   })
 
   test('reads a bare array', () => {
-    expect(parseNames('["alpha-beta","gamma-delta"]')).toEqual(['alpha-beta', 'gamma-delta'])
+    expect(parseNames('["alpha-beta","gamma-delta"]', kebab)).toEqual(['alpha-beta', 'gamma-delta'])
   })
 
   test('falls back only to kebab-case lines, never to prose', () => {
-    const reply = 'Here are four suggestions:\n1. webpack-build-fix\n- `chrome-history-archive`\nI hope these help!'
-    expect(parseNames(reply)).toEqual(['webpack-build-fix', 'chrome-history-archive'])
+    const reply = 'Here are four suggestions:\n1. webpack-build-fix\n- `fix-login-redirect-bug`\nI hope these help!'
+    expect(parseNames(reply, kebab)).toEqual(['webpack-build-fix', 'fix-login-redirect-bug'])
   })
 
   test('does not glue two brackets together', () => {
-    expect(parseNames('["a-b-c","d-e-f"] and also [note]')).toEqual(['a-b-c', 'd-e-f'])
+    expect(parseNames('["a-b-c","d-e-f"] and also [note]', kebab)).toEqual(['a-b-c', 'd-e-f'])
   })
 
   test('drops generic names and the current name', () => {
-    expect(parseNames('{"names":["new-session","old-name","fresh-name"]}', { current: 'Old Name' })).toEqual(['fresh-name'])
+    expect(parseNames('{"names":["new-session","old-name","fresh-name"]}', { ...kebab, current: 'Old Name' })).toEqual(['fresh-name'])
   })
 
   test('keeps leading digits', () => {
-    expect(parseNames('{"names":["2fa-rollout","2024-budget-migration"]}')).toEqual(['2fa-rollout', '2024-budget-migration'])
+    expect(parseNames('{"names":["2fa-rollout","2024-budget-migration"]}', kebab)).toEqual(['2fa-rollout', '2024-budget-migration'])
+  })
+})
+
+describe('parseNames (title)', () => {
+  test('keeps the title as written, Turkish letters included', () => {
+    const names = parseNames('{"names": ["Karanlık tema ayarı", "Giriş yönlendirme hatası."]}')
+    expect(names).toEqual(['Karanlık tema ayarı', 'Giriş yönlendirme hatası'])
+  })
+
+  test('drops repeats, generic names and the current name without regard to case', () => {
+    const names = parseNames('{"names":["New session","Old name","Fresh name","fresh-name","Another one"]}', { current: 'old-name' })
+    expect(names).toEqual(['Fresh name', 'Another one'])
+  })
+
+  test('falls back to listed lines, never to prose', () => {
+    const reply = 'Here are four suggestions:\n1. Webpack build fix\n- "Fix login redirect bug"\nI hope these help!'
+    expect(parseNames(reply)).toEqual(['Webpack build fix', 'Fix login redirect bug'])
+  })
+
+  test('cuts a long title at a word boundary', () => {
+    expect(title('One two three four five six seven eight nine ten eleven twelve thirteen')).toBe('One two three four five six seven eight nine ten eleven')
+  })
+
+  test('the system prompt follows the style', () => {
+    expect(system('tr', 'title').includes('Turkish letters kept')).toBe(true)
+    expect(system('tr', 'kebab').includes('kebab-case')).toBe(true)
   })
 })
 
