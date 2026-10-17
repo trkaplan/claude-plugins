@@ -30,6 +30,7 @@ To update later: `claude plugin update <plugin>@trkaplan`, then restart Claude C
 claude-plugins/
 ├── .claude-plugin/marketplace.json   # lists every plugin below
 ├── README.md
+├── CLAUDE.md                          # development workflow for Claude Code
 ├── LICENSE
 └── plugins/
     └── better-rename/                 # a mod
