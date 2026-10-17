@@ -1,12 +1,12 @@
 {
-  "name": "smart-rename",
+  "name": "better-rename",
   "version": "0.4.0",
   "description": "/rename run bare suggests 4 names from the whole session; /rename <name> works as before",
   "author": {
     "name": "Tuncay Kaplan",
     "url": "https://github.com/trkaplan"
   },
-  "homepage": "https://github.com/trkaplan/claude-plugins/tree/main/plugins/smart-rename",
+  "homepage": "https://github.com/trkaplan/claude-plugins/tree/main/plugins/better-rename",
   "repository": "https://github.com/trkaplan/claude-plugins",
   "license": "MIT",
   "keywords": [

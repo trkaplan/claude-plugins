@@ -9,8 +9,8 @@
   },
   "plugins": [
     {
-      "name": "smart-rename",
-      "source": "./plugins/smart-rename",
+      "name": "better-rename",
+      "source": "./plugins/better-rename",
       "description": "/rename run bare suggests 4 names from the whole session; /rename <name> works as before"
     }
   ]

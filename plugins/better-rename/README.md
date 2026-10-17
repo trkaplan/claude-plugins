@@ -1,4 +1,4 @@
-# smart-rename
+# better-rename
 
 A Claude Code mod that makes `/rename` suggest names from the whole session.
 
@@ -11,7 +11,7 @@ Type `/ren` and Tab: there is only one `/rename`, and the menu says the name is 
 ## Install
 
 ```
-/plugin install smart-rename --marketplace trkaplan/claude-plugins
+/plugin install better-rename --marketplace trkaplan/claude-plugins
 ```
 
 Answer `y` to add the marketplace and pick a scope (user scope = every session). Requires a Claude Code build with mods (function hooks); built and tested on 2.1.296.
@@ -44,6 +44,6 @@ Every bare `/rename` makes one model call (two if the first reply is unusable) w
 ## Development
 
 ```
-claude plugin validate plugins/smart-rename
-claude plugin test plugins/smart-rename
+claude plugin validate plugins/better-rename
+claude plugin test plugins/better-rename
 ```
