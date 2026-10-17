@@ -1,0 +1,19 @@
+{
+  "name": "smart-rename",
+  "version": "0.3.0",
+  "description": "Bare /rename reads the whole session and offers 4 names to pick from; /rename <name> works as before",
+  "author": { "name": "Tuncay Kaplan", "url": "https://github.com/trkaplan" },
+  "homepage": "https://github.com/trkaplan/claude-plugins/tree/main/plugins/smart-rename",
+  "repository": "https://github.com/trkaplan/claude-plugins",
+  "license": "MIT",
+  "keywords": ["rename", "session", "mod"],
+  "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Language of the suggested names and messages (en: English, tr: Turkce)",
+      "default": "en",
+      "options": ["en", "tr"]
+    }
+  }
+}
