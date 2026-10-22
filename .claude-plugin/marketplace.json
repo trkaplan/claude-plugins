@@ -12,6 +12,11 @@
       "name": "better-rename",
       "source": "./plugins/better-rename",
       "description": "/rename run bare suggests 4 names from the whole session; /rename <name> works as before"
+    },
+    {
+      "name": "herdr-tab-label",
+      "source": "./plugins/herdr-tab-label",
+      "description": "Keeps the Herdr tab label equal to the session name, so the tab strip shows what each pane is doing"
     }
   ]
 }

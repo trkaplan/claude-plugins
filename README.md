@@ -7,6 +7,7 @@ Claude Code mods and skills by [Tuncay Kaplan](https://github.com/trkaplan). Thi
 | Plugin | Kind | What it does |
 | --- | --- | --- |
 | [better-rename](plugins/better-rename) | mod | `/rename` run bare suggests 4 names from the whole session; `/rename <name>` works as before |
+| [herdr-tab-label](plugins/herdr-tab-label) | hook | Keeps the Herdr tab label equal to the session name, so the tab strip shows what each pane is doing |
 
 ## Install
 
@@ -41,7 +42,7 @@ claude-plugins/
         └── README.md
 ```
 
-A skill plugin has `skills/<skill>/SKILL.md` in place of `hooks/`.
+A skill plugin has `skills/<skill>/SKILL.md` in place of `hooks/`. A plain hook plugin (such as `herdr-tab-label`) has `hooks/hooks.json` plus the script it runs.
 
 ## Adding a plugin (for the maintainer)
 

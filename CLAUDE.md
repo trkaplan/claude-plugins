@@ -8,6 +8,10 @@ A mod (TypeScript function hooks, `hooks/register.ts` + `hooks/lib.ts`) that hoo
 
 It is submitted to Anthropic's plugin directory, which tracks `main` (scheduled checks, auto-publish on). Every commit on `main` that changes `plugins/better-rename/` becomes a candidate version and is scanned; the `MOD_RUNS_COMMAND` policy hold comes back on each version, so a reviewer looks at every release.
 
+## herdr-tab-label
+
+A plain command hook (`hooks/hooks.json`, `Stop` event) that runs `hooks/herdrTabLabel.mjs` and copies the session name onto the Herdr tab label. No model call, no TypeScript; tests run with `node --test plugins/herdr-tab-label/tests/label.test.mjs`. Its README carries a prompt for people who prefer to rebuild it inside their own repo; keep that prompt in step with the script.
+
 ## Workflow
 
 - Work on a branch; merge to `main` only when a release is ready.

@@ -1,0 +1,19 @@
+{
+  "name": "herdr-tab-label",
+  "displayName": "Herdr Tab Label",
+  "version": "0.1.0",
+  "description": "Keeps the Herdr tab label equal to the session name, so a tab strip shows what each pane is doing instead of 2, 3, 18",
+  "author": {
+    "name": "Tuncay Kaplan",
+    "url": "https://github.com/trkaplan"
+  },
+  "homepage": "https://github.com/trkaplan/claude-plugins/tree/main/plugins/herdr-tab-label",
+  "repository": "https://github.com/trkaplan/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "herdr",
+    "tab",
+    "session",
+    "hook"
+  ]
+}
