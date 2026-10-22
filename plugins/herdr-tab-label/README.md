@@ -8,6 +8,8 @@ A Herdr tab strip that reads `2`, `3`, `18` makes it easy to hand work to the wr
 - At the end of every turn the hook copies that title onto the tab label. No guessing from branches or task files: the session's own name is the only source.
 - Outside Herdr, or on any error, it does nothing and exits quietly.
 
+![Herdr tab strip with named tabs](screenshot.png)
+
 ## Install
 
 ```
