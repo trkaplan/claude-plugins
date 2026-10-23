@@ -1,7 +1,7 @@
 {
   "name": "herdr-tab-label",
   "displayName": "Herdr Tab Label",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Keeps the Herdr tab label equal to the session name, so a tab strip shows what each pane is doing instead of 2, 3, 18",
   "author": {
     "name": "Tuncay Kaplan",

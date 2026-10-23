@@ -6,6 +6,7 @@ A Herdr tab strip that reads `2`, `3`, `18` makes it easy to hand work to the wr
 
 - Name the session with `/rename` (bare `/rename` with [better-rename](../better-rename) suggests names). Claude Code writes the name to the terminal title; Herdr already shows that title.
 - At the end of every turn the hook copies that title onto the tab label. No guessing from branches or task files: the session's own name is the only source.
+- A new session in the same tab (`claude` started again, or `/clear`) drops the label the previous session left, so the tab goes back to its number until the new session is named. Labels you set by hand are never touched; `--resume` keeps the name.
 - Outside Herdr, or on any error, it does nothing and exits quietly.
 
 ![Herdr tab strip: named tabs instead of numbers (illustration)](screenshot.png)
@@ -29,21 +30,29 @@ Answer `y` to add the marketplace and pick a scope (user scope = every session).
 
 ## Hooks this plugin adds
 
-One `Stop` hook (`hooks/hooks.json`) that runs `node hooks/herdrTabLabel.mjs` at the end of every turn, with a 10 second timeout.
+Two command hooks (`hooks/hooks.json`), both with a 10 second timeout:
+
+| Hook | What it does |
+| --- | --- |
+| `Stop` | Runs `node hooks/herdrTabLabel.mjs` at the end of every turn: writes the label and remembers it |
+| `SessionStart` | Runs `node hooks/herdrTabLabel.mjs start`: when the source is `startup` or `clear` and the tab still carries the label this plugin wrote, clears it. `resume` and `compact` change nothing |
 
 ### What it reads
 
 - Environment variables Herdr sets for the pane: `HERDR_ENV`, `HERDR_PANE_ID`, `HERDR_TAB_ID`, `HERDR_WORKSPACE_ID`. If the first three are missing it exits at once.
 - The current working directory's folder name, to recognize an unnamed session.
+- The hook input on `SessionStart` (its `source` field only).
+- Its own note of the last label it wrote, one small text file per tab under `~/.cache/herdr-tab-label/`. That is the only thing it writes to disk.
 - The output of `herdr agent list` (its own pane's terminal title) and `herdr tab list --workspace <id>` (the current label, so an unchanged label is not written again).
 
-It reads no files, no session content, no settings, and makes no network or model calls.
+It reads no session content and no settings, and makes no network or model calls.
 
 ### Commands it runs
 
 - `herdr agent list`
 - `herdr tab list --workspace <id>`
 - `herdr tab rename <tab id> <label>`, only when the label differs from the current one.
+- `herdr tab rename <tab id> ""` on a fresh session, only when the tab still carries a label this plugin wrote.
 
 Nothing else. Every error is swallowed so the session is never affected.
 
@@ -77,13 +86,19 @@ Behavior:
 4. Run `herdr tab list --workspace $HERDR_WORKSPACE_ID`, read the current
    label; if it already equals the new label do not write (no flicker).
 5. Run `herdr tab rename $HERDR_TAB_ID <label>`.
-6. Swallow every error; without Herdr or on unexpected JSON exit quietly.
+6. Remember the label you wrote (one small file per tab id under a cache
+   dir). Add a SessionStart hook: when the hook input's source is "startup"
+   or "clear" and the tab still carries the remembered label, clear it with
+   `herdr tab rename $HERDR_TAB_ID ""` so the tab shows its number again;
+   on "resume" or "compact" do nothing. Never clear a label you did not
+   write.
+7. Swallow every error; without Herdr or on unexpected JSON exit quietly.
    The hook must never break the session.
 
 Put it in scripts/herdrTabLabel.mjs (Node, ESM, no dependencies, call herdr
 with execFileSync), start the file with a comment explaining WHY it works
 this way, and make it runnable by hand. Register it in .claude/settings.json
-as a Stop hook with timeout 10. Export the label function and add a small
+as a Stop hook and a SessionStart hook with timeout 10. Export the label function and add a small
 test: task id wins, repo name gives null, long title is cut.
 ```
 
